@@ -1,26 +1,50 @@
 module App
 
-open Browser.Dom
+open Fable.React
+open Fable.React.Props
 
-let minus = document.getElementById "minus"
-let plus = document.getElementById "plus"
+type Model = { 
+    Count : int 
+    }
 
-let mutable count = 0
+type Msg =
+    | Increment
+    | Decrement
+    | IncrementBy of int
+    | Reset 
 
-let textcount = document.getElementById "textcount"
-textcount.innerHTML <- (string count)
+let init () : Model =
+    { Count = 42 }
 
-minus.addEventListener(
-    "click",
-    fun _ -> 
-        count <- count - 1
-        textcount.innerHTML <- (string count)
-)
+let update msg model : Model =
+    match msg with
+    | Increment ->
+        { model with Count = model.Count + 1 }
+    | Decrement ->
+        { model with Count = model.Count - 1 }
+    | IncrementBy step ->
+        { model with Count = model.Count + step }
+    | Reset ->
+        init()
 
-plus.addEventListener(
-    "click",
-    fun _ -> 
-        count <- count + 1
-        textcount.innerHTML <- (string count)
-)
+let view model dispatch =
+    div []
+        [
+            button [ OnClick (fun _ -> dispatch Decrement) ] 
+                [ str "-" ]
+            h1 [] 
+                [ ofInt model.Count ]
+            button [ OnClick (fun _ -> dispatch Increment) ] 
+                [ str "+" ]
+            button [ OnClick (fun _ -> dispatch <| IncrementBy 5) ] 
+                [ str "+5" ]
+            button [ OnClick (fun _ -> dispatch Reset) ] 
+                [ str "Reset" ]
+        ]
 
+open Elmish
+open Elmish.React
+
+Program.mkSimple init update view 
+|> Program.withReactSynchronous "app"
+|> Program.run
