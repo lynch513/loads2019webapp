@@ -5,12 +5,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="src/Data.fs" />
     <Compile Include="src/App.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Fable.Browser.Dom" Version="1.0.0" />
     <PackageReference Include="Fable.Elmish.React" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Loads2019\Loads2019.fsproj" />
   </ItemGroup>
 
 </Project>
