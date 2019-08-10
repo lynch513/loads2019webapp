@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <Compile Include="src/Data.fs" />
+    <Compile Include="src/Layout.fs" />
+    <Compile Include="src/Components.fs" />
     <Compile Include="src/App.fs" />
   </ItemGroup>
 
