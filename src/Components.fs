@@ -3,13 +3,40 @@ module Components
 open Fable.React
 open Fable.React.Props
 
+open Elmish
+
+open Data
 open Loads2019
+
+//-----------------------------------------------------------------------------
+// Models, Msg, init and update
+//-----------------------------------------------------------------------------
+
+type Model = { 
+    StationList : Types.Station list
+    CurrentStation : Types.Station option
+    }
+
+type Msg =
+    | ResetCurrentStation
+    | SetCurrentStation of Types.Station
+
+let init () : Model * Cmd<Msg> =
+    { StationList = testStations
+      CurrentStation = None }, Cmd.none
+
+let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
+    match msg with
+    | ResetCurrentStation ->
+        { model with CurrentStation = None }, Cmd.none
+    | SetCurrentStation station ->
+        { model with CurrentStation = Some station }, Cmd.none
 
 //-----------------------------------------------------------------------------
 // Simple Components
 //-----------------------------------------------------------------------------
 
-let Line (line : Types.Line) dispatch =
+let Line (line : Types.Line) =
     tr [] [ 
         td [] [ str line.Name ]
         ofList [ 
@@ -21,7 +48,7 @@ let Line (line : Types.Line) dispatch =
                ]
           ]
 
-let Section (section : Types.Section) dispatch =
+let Section (section : Types.Section) =
     ofList [
         tr [] [ td [ ColSpan 5
                      ClassName 
@@ -29,7 +56,7 @@ let Section (section : Types.Section) dispatch =
                    [ ofString "Секция" ]
               ]
         ofList [ for line in section.Lines 
-            -> Line line dispatch ]
+            -> Line line ]
     ]
 
 let Station (station : Types.Station) dispatch =
@@ -44,7 +71,8 @@ let Station (station : Types.Station) dispatch =
                             [ str "Перерасчет" ]
                         button [ ClassName "btn btn-sm btn-secondary ml-1" ] 
                             [ str "Восстановить" ]
-                        button [ ClassName "btn btn-sm btn-danger ml-1" ] 
+                        button [ ClassName "btn btn-sm btn-danger ml-1"
+                                 OnClick (fun _ -> dispatch <| ResetCurrentStation) ] 
                             [ str "Закрыть" ]
                     ]
                 ]
@@ -68,28 +96,44 @@ let Station (station : Types.Station) dispatch =
                     ]
                   tbody [] 
                     [ for section in station.Sections 
-                        -> Section section dispatch ]
+                        -> Section section ]
                 ]
             ]
     ]
+
+let ObjectCounter caption objectCount =
+    div [ ClassName "card-body d-flex justify-content-between align-items-center" ] [
+        str caption
+        span [ ClassName "badge badge-primary badge-pill" ] [
+            ofInt objectCount
+        ]
+
+    ]
+
+//-----------------------------------------------------------------------------
+// List Components
+//-----------------------------------------------------------------------------
 
 let StationListItem (station : Types.Station) dispatch =
     ul [ ClassName "list-group list-group-flush" ]
         [ li [ ClassName "list-group-item d-flex justify-content-between align-items-center" ]
             [ h5 [ ClassName "span badge badge-secondary" ] 
                  [ str station.Name ] 
-              button [ ClassName "btn btn-sm btn-info" ]
+              button [ ClassName "btn btn-sm btn-info"
+                       OnClick (fun _ -> dispatch <| SetCurrentStation station) ]
                 [ str "Открыть" ]
             ]
         ]
 
-//-----------------------------------------------------------------------------
-// List Components
-//-----------------------------------------------------------------------------
-
-let StationList (currentStation : Types.Station) (stations : Types.Station list) dispatch =
-    div [ ClassName "card mt-1"]
-        [ for station in stations ->
-            (if currentStation.Name = station.Name
-             then Station station dispatch
-             else StationListItem station dispatch) ]
+let StationList (model : Model) dispatch =
+    ofList [
+        ObjectCounter "Записей в базе данных" model.StationList.Length
+        div [ ClassName "card mt-1"]
+            [ for station in model.StationList ->
+                match model.CurrentStation with
+                | Some currentStation' when currentStation'.Name = station.Name -> 
+                    Station station dispatch
+                | _ ->
+                    StationListItem station dispatch
+            ]
+    ]

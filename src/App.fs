@@ -1,49 +1,46 @@
 module App
 
-open Fable.React
-open Fable.React.Props
+open Elmish
+open Elmish.React
 
-open Data
-open Layout
-open Components
-open Loads2019.Types
+open Fable.React
+
 
 
 type Model = { 
-    StationList : Station list
-    CurrentStation : Station
+    ComponentsModel : Components.Model 
     }
 
 type Msg =
-    | SetCurrentStation of Station
+    | ComponentsMsg of Components.Msg
 
-let init () : Model =
-    { StationList = testStations
-      CurrentStation = testStationDefault }
+let init () : Model * Cmd<Msg> =
+    let res, cmd = Components.init()
+    { ComponentsModel = res }, 
+        Cmd.map ComponentsMsg cmd
 
-let update msg model : Model =
+let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
     match msg with
-    | SetCurrentStation station ->
-        { model with CurrentStation = station }
+    | ComponentsMsg msg' ->
+        let res, cmd = Components.update msg' model.ComponentsModel
+        { model with ComponentsModel = res },
+            Cmd.map ComponentsMsg cmd
 
 
-let view model dispatch =
+let view (model : Model) (dispatch : Msg -> unit) =
     div [] [
-        HeaderSection dispatch
-        MainSection [
-            ObjectCounter "Записей в базе данных" model.StationList.Length
-            StationList model.CurrentStation model.StationList dispatch
+        Layout.HeaderSection dispatch
+        Layout.MainSection [
+            // Layout.ObjectCounter "Записей в базе данных" model.StationList.Length
+            Components.StationList model.ComponentsModel (ComponentsMsg >> dispatch)
         ] 
-        FooterSection [
+        Layout.FooterSection [
             str "2019"
         ]
         // button [ OnClick (fun _ -> dispatch <| SetCurrentStation testStation1)]
         //     [ str "Switch station"]
     ]
 
-open Elmish
-open Elmish.React
-
-Program.mkSimple init update view 
+Program.mkProgram init update view 
 |> Program.withReactSynchronous "app"
 |> Program.run

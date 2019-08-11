@@ -49,11 +49,3 @@ let FooterSection (children : ReactElement list) =
             span [ ClassName "text-muted" ] children
         ]
     ]
-
-let ObjectCounter caption objectCount =
-    div [ ClassName "card-body d-flex justify-content-between align-items-center" ] [
-        str caption
-        span [ ClassName "badge badge-primary badge-pill" ] [
-            ofInt objectCount
-        ]
-    ]
