@@ -28,7 +28,7 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
 
 
 let view (model : Model) (dispatch : Msg -> unit) =
-    div [] [
+    ofList [
         Layout.HeaderSection dispatch
         Layout.MainSection [
             // Layout.ObjectCounter "Записей в базе данных" model.StationList.Length

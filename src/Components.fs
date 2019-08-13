@@ -8,6 +8,7 @@ open Elmish
 open Data
 open Loads2019
 
+
 //-----------------------------------------------------------------------------
 // Models, Msg, init and update
 //-----------------------------------------------------------------------------
@@ -18,19 +19,27 @@ type Model = {
     }
 
 type Msg =
-    | ResetCurrentStation
     | SetCurrentStation of Types.Station
+    | RecalcCurrentStation of Types.Station
+    | RestoreCurrentStation of Types.Station
+    | CloseCurrentStation
 
 let init () : Model * Cmd<Msg> =
     { StationList = testStations
       CurrentStation = None }, Cmd.none
 
 let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
+    let findStation (station' : Types.Station) = 
+        List.find (fun (s : Types.Station) -> s.Name = station'.Name) model.StationList
     match msg with
-    | ResetCurrentStation ->
-        { model with CurrentStation = None }, Cmd.none
     | SetCurrentStation station ->
         { model with CurrentStation = Some station }, Cmd.none
+    | RecalcCurrentStation station ->
+        model, Cmd.OfFunc.perform (findStation >> Fake.Station.fakeSamples) station SetCurrentStation
+    | RestoreCurrentStation station ->
+        model, Cmd.OfFunc.perform findStation station SetCurrentStation
+    | CloseCurrentStation ->
+        { model with CurrentStation = None }, Cmd.none
 
 //-----------------------------------------------------------------------------
 // Simple Components
@@ -67,12 +76,14 @@ let Station (station : Types.Station) dispatch =
                     [ str station.Name ]
                   div []
                     [ 
-                        button [ ClassName "btn btn-sm btn-success" ] 
+                        button [ ClassName "btn btn-sm btn-success"
+                                 OnClick (fun _ -> dispatch <| RecalcCurrentStation station) ] 
                             [ str "Перерасчет" ]
-                        button [ ClassName "btn btn-sm btn-secondary ml-1" ] 
+                        button [ ClassName "btn btn-sm btn-secondary ml-1"
+                                 OnClick (fun _ -> dispatch <| RestoreCurrentStation station) ] 
                             [ str "Восстановить" ]
                         button [ ClassName "btn btn-sm btn-danger ml-1"
-                                 OnClick (fun _ -> dispatch <| ResetCurrentStation) ] 
+                                 OnClick (fun _ -> dispatch CloseCurrentStation) ] 
                             [ str "Закрыть" ]
                     ]
                 ]
@@ -132,7 +143,7 @@ let StationList (model : Model) dispatch =
             [ for station in model.StationList ->
                 match model.CurrentStation with
                 | Some currentStation' when currentStation'.Name = station.Name -> 
-                    Station station dispatch
+                    Station currentStation' dispatch
                 | _ ->
                     StationListItem station dispatch
             ]
