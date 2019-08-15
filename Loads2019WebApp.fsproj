@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="src/Data.fs" />
+    <Compile Include="src/Helpers.fs" />
     <Compile Include="src/Layout.fs" />
     <Compile Include="src/Components.fs" />
     <Compile Include="src/App.fs" />
@@ -14,6 +15,9 @@
   <ItemGroup>
     <PackageReference Include="Fable.Browser.Dom" Version="1.0.0" />
     <PackageReference Include="Fable.Elmish.React" Version="3.0.1" />
+    <PackageReference Include="Fable.Fetch" Version="2.0.0" />
+    <PackageReference Include="Fable.Promise" Version="2.0.0" />
+    <PackageReference Include="Thoth.Json" Version="3.3.0" />
   </ItemGroup>
 
   <ItemGroup>

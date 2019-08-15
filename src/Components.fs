@@ -48,12 +48,11 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
 let Line (line : Types.Line) =
     tr [] [ 
         td [] [ str line.Name ]
-        ofList [ 
-            for sample in line.Samples -> 
-                ofList [
+        ofList [ for sample in line.Samples -> 
+                    ofList [
                         td [] [ (if sample > 0 then str "+" else str "-") ]
                         td [] [ ofInt sample ]
-                       ] 
+                    ] 
                ]
           ]
 

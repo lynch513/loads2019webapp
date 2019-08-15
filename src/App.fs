@@ -4,8 +4,8 @@ open Elmish
 open Elmish.React
 
 open Fable.React
-
-
+open Fable.React.Props
+open Loads2019
 
 type Model = { 
     ComponentsModel : Components.Model 
@@ -13,6 +13,9 @@ type Model = {
 
 type Msg =
     | ComponentsMsg of Components.Msg
+    | FetchMsg
+    | OnFetchSuccess of Result<Types.Station, string>
+    | OnFetchError of exn
 
 let init () : Model * Cmd<Msg> =
     let res, cmd = Components.init()
@@ -25,6 +28,20 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
         let res, cmd = Components.update msg' model.ComponentsModel
         { model with ComponentsModel = res },
             Cmd.map ComponentsMsg cmd
+    | FetchMsg ->
+        model, Cmd.OfPromise.either Helpers.httpGet<Types.Station> "data.json" OnFetchSuccess OnFetchError
+    | OnFetchSuccess mStation ->
+       match mStation with
+       | Ok station ->
+           printfn "%A" station
+           model, Cmd.none
+       | Error e ->
+           printfn "%s" e
+           model, Cmd.none
+    | OnFetchError error ->
+        Browser.Dom.console.error error
+        model, Cmd.none
+
 
 
 let view (model : Model) (dispatch : Msg -> unit) =
@@ -34,6 +51,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             // Layout.ObjectCounter "Записей в базе данных" model.StationList.Length
             Components.StationList model.ComponentsModel (ComponentsMsg >> dispatch)
         ] 
+        button [ OnClick (fun _ -> dispatch FetchMsg)] [ str "Fetch" ]
         Layout.FooterSection [
             str "2019"
         ]
