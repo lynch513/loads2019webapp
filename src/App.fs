@@ -4,8 +4,6 @@ open Elmish
 open Elmish.React
 
 open Fable.React
-open Fable.React.Props
-open Loads2019
 
 type Model = { 
     ComponentsModel : Components.Model 
@@ -13,9 +11,11 @@ type Model = {
 
 type Msg =
     | ComponentsMsg of Components.Msg
-    | FetchMsg
-    | OnFetchSuccess of Result<Types.Station, string>
-    | OnFetchError of exn
+
+let fetchData _ =
+    let sub dispatch =
+        dispatch <| ComponentsMsg Components.Msg.FetchData |> ignore
+    Cmd.ofSub sub
 
 let init () : Model * Cmd<Msg> =
     let res, cmd = Components.init()
@@ -28,37 +28,19 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
         let res, cmd = Components.update msg' model.ComponentsModel
         { model with ComponentsModel = res },
             Cmd.map ComponentsMsg cmd
-    | FetchMsg ->
-        model, Cmd.OfPromise.either Helpers.httpGet<Types.Station> "data.json" OnFetchSuccess OnFetchError
-    | OnFetchSuccess mStation ->
-       match mStation with
-       | Ok station ->
-           printfn "%A" station
-           model, Cmd.none
-       | Error e ->
-           printfn "%s" e
-           model, Cmd.none
-    | OnFetchError error ->
-        Browser.Dom.console.error error
-        model, Cmd.none
-
-
 
 let view (model : Model) (dispatch : Msg -> unit) =
     ofList [
         Layout.HeaderSection dispatch
         Layout.MainSection [
-            // Layout.ObjectCounter "Записей в базе данных" model.StationList.Length
             Components.StationList model.ComponentsModel (ComponentsMsg >> dispatch)
         ] 
-        button [ OnClick (fun _ -> dispatch FetchMsg)] [ str "Fetch" ]
         Layout.FooterSection [
             str "2019"
         ]
-        // button [ OnClick (fun _ -> dispatch <| SetCurrentStation testStation1)]
-        //     [ str "Switch station"]
     ]
 
 Program.mkProgram init update view 
 |> Program.withReactSynchronous "app"
+|> Program.withSubscription fetchData
 |> Program.run

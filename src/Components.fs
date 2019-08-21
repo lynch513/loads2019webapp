@@ -8,6 +8,11 @@ open Elmish
 open Data
 open Loads2019
 
+type HTMLAttr = 
+     | [<CompiledName("data-dismiss")>] DataDismiss of string
+     | [<CompiledName("aria-label")>] AriaLabel of string
+     | [<CompiledName("aria-hidden")>] AriaHidden of bool
+     interface IHTMLProp
 
 //-----------------------------------------------------------------------------
 // Models, Msg, init and update
@@ -19,6 +24,9 @@ type Model = {
     }
 
 type Msg =
+    | FetchData
+    | OnFetchSuccess of Result<Types.Station list, string>
+    | OnFetchError of exn
     | SetCurrentStation of Types.Station
     | RecalcCurrentStation of Types.Station
     | RestoreCurrentStation of Types.Station
@@ -32,6 +40,18 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
     let findStation (station' : Types.Station) = 
         List.find (fun (s : Types.Station) -> s.Name = station'.Name) model.StationList
     match msg with
+    | FetchData ->
+        model, Cmd.OfPromise.either Helpers.httpGet<Types.Station list> "stations.json" OnFetchSuccess OnFetchError
+    | OnFetchSuccess mStationList ->
+        match mStationList with
+        | Ok stationList ->
+            { model with CurrentStation = None; StationList = stationList }, Cmd.none
+        | Error e ->
+            printfn "%s" e
+            model, Cmd.none
+    | OnFetchError error ->
+        Browser.Dom.console.error error
+        model, Cmd.none
     | SetCurrentStation station ->
         { model with CurrentStation = Some station }, Cmd.none
     | RecalcCurrentStation station ->
@@ -119,6 +139,37 @@ let ObjectCounter caption objectCount =
         ]
 
     ]
+
+let PopupMessage title message =
+    div [ ClassName "modal" 
+          TabIndex -1
+          Role "dialog" ] [
+              div [ ClassName "modal-dialog"
+                    Role "document" ] [
+                        div [ ClassName "modal-content" ] [
+                            div [ ClassName "modal-header" ] [
+                                h5 [ ClassName "modal-title" ] [ str title ]
+                                button [ Type "button"
+                                         ClassName "close"
+                                         DataDismiss "modal"
+                                         AriaLabel "Close" ] [
+                                             span [ AriaHidden true ] [
+                                                 str "&times;"
+                                             ]
+                                         ]
+                            ]
+                            div [ ClassName "modal-body" ] [
+                                p [] [ str message ]
+                            ]
+                            div [ ClassName "modal-footer" ] [
+                                button [ Type "button"
+                                         ClassName "btn btn-primary" ] [
+                                             str "Закрыть"
+                                         ]
+                            ]
+                        ]
+                    ]
+          ]
 
 //-----------------------------------------------------------------------------
 // List Components
