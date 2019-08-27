@@ -4,22 +4,28 @@ open Fable.React
 open Fable.React.Props
 
 open Elmish
+open Browser.Dom
 
-open Data
 open Loads2019
 
 type HTMLAttr = 
      | [<CompiledName("data-dismiss")>] DataDismiss of string
      | [<CompiledName("aria-label")>] AriaLabel of string
      | [<CompiledName("aria-hidden")>] AriaHidden of bool
+     | [<CompiledName("aria-labelledby")>] AriaLabelledBy of string
      interface IHTMLProp
 
 //-----------------------------------------------------------------------------
 // Models, Msg, init and update
 //-----------------------------------------------------------------------------
 
+type StationListState =
+    | EmptyStationList 
+    | OkStationList of Types.Station list
+    | ErrorStationList of string
+
 type Model = { 
-    StationList : Types.Station list
+    CurrentStationList : StationListState
     CurrentStation : Types.Station option
     }
 
@@ -27,37 +33,44 @@ type Msg =
     | FetchData
     | OnFetchSuccess of Result<Types.Station list, string>
     | OnFetchError of exn
-    | SetCurrentStation of Types.Station
-    | RecalcCurrentStation of Types.Station
-    | RestoreCurrentStation of Types.Station
+    | SetCurrentStation of Types.Station option
+    | RecalcCurrentStation 
+    | RestoreCurrentStation 
     | CloseCurrentStation
 
 let init () : Model * Cmd<Msg> =
-    { StationList = testStations
+    { CurrentStationList = EmptyStationList
       CurrentStation = None }, Cmd.none
 
 let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
-    let findStation (station' : Types.Station) = 
-        List.find (fun (s : Types.Station) -> s.Name = station'.Name) model.StationList
+    let tryFindStation (station' : Types.Station) : Types.Station option = 
+        match model.CurrentStationList with
+        | OkStationList stationList ->
+            List.tryFind (fun (s : Types.Station) -> s.Name = station'.Name) stationList
+        | _ -> None
+    let restoreCurrentStation  =
+        Option.bind tryFindStation 
+    let recalcCurrentStation = 
+        tryFindStation >> Option.map Fake.Station.fakeSamples |> Option.bind
     match msg with
     | FetchData ->
         model, Cmd.OfPromise.either Helpers.httpGet<Types.Station list> "stations.json" OnFetchSuccess OnFetchError
     | OnFetchSuccess mStationList ->
         match mStationList with
         | Ok stationList ->
-            { model with CurrentStation = None; StationList = stationList }, Cmd.none
+            { model with CurrentStation = None; CurrentStationList = OkStationList stationList }, Cmd.none
         | Error e ->
-            printfn "%s" e
-            model, Cmd.none
+            console.error e
+            { model with CurrentStationList = ErrorStationList e }, Cmd.none
     | OnFetchError error ->
-        Browser.Dom.console.error error
-        model, Cmd.none
-    | SetCurrentStation station ->
-        { model with CurrentStation = Some station }, Cmd.none
-    | RecalcCurrentStation station ->
-        model, Cmd.OfFunc.perform (findStation >> Fake.Station.fakeSamples) station SetCurrentStation
-    | RestoreCurrentStation station ->
-        model, Cmd.OfFunc.perform findStation station SetCurrentStation
+        console.error error
+        { model with CurrentStationList = ErrorStationList error.Message }, Cmd.none
+    | SetCurrentStation mStation ->
+        { model with CurrentStation = mStation }, Cmd.none
+    | RecalcCurrentStation ->
+        model, Cmd.OfFunc.perform recalcCurrentStation model.CurrentStation SetCurrentStation
+    | RestoreCurrentStation ->
+        model, Cmd.OfFunc.perform restoreCurrentStation model.CurrentStation SetCurrentStation
     | CloseCurrentStation ->
         { model with CurrentStation = None }, Cmd.none
 
@@ -96,10 +109,10 @@ let Station (station : Types.Station) dispatch =
                   div []
                     [ 
                         button [ ClassName "btn btn-sm btn-success"
-                                 OnClick (fun _ -> dispatch <| RecalcCurrentStation station) ] 
+                                 OnClick (fun _ -> dispatch <| RecalcCurrentStation) ] 
                             [ str "Перерасчет" ]
                         button [ ClassName "btn btn-sm btn-secondary ml-1"
-                                 OnClick (fun _ -> dispatch <| RestoreCurrentStation station) ] 
+                                 OnClick (fun _ -> dispatch <| RestoreCurrentStation) ] 
                             [ str "Восстановить" ]
                         button [ ClassName "btn btn-sm btn-danger ml-1"
                                  OnClick (fun _ -> dispatch CloseCurrentStation) ] 
@@ -140,37 +153,6 @@ let ObjectCounter caption objectCount =
 
     ]
 
-let PopupMessage title message =
-    div [ ClassName "modal" 
-          TabIndex -1
-          Role "dialog" ] [
-              div [ ClassName "modal-dialog"
-                    Role "document" ] [
-                        div [ ClassName "modal-content" ] [
-                            div [ ClassName "modal-header" ] [
-                                h5 [ ClassName "modal-title" ] [ str title ]
-                                button [ Type "button"
-                                         ClassName "close"
-                                         DataDismiss "modal"
-                                         AriaLabel "Close" ] [
-                                             span [ AriaHidden true ] [
-                                                 str "&times;"
-                                             ]
-                                         ]
-                            ]
-                            div [ ClassName "modal-body" ] [
-                                p [] [ str message ]
-                            ]
-                            div [ ClassName "modal-footer" ] [
-                                button [ Type "button"
-                                         ClassName "btn btn-primary" ] [
-                                             str "Закрыть"
-                                         ]
-                            ]
-                        ]
-                    ]
-          ]
-
 //-----------------------------------------------------------------------------
 // List Components
 //-----------------------------------------------------------------------------
@@ -181,20 +163,46 @@ let StationListItem (station : Types.Station) dispatch =
             [ h5 [ ClassName "span badge badge-secondary" ] 
                  [ str station.Name ] 
               button [ ClassName "btn btn-sm btn-info"
-                       OnClick (fun _ -> dispatch <| SetCurrentStation station) ]
+                       OnClick (fun _ -> 
+                                    station 
+                                    |> Some 
+                                    |> SetCurrentStation 
+                                    |> dispatch) ]
                 [ str "Открыть" ]
             ]
         ]
 
 let StationList (model : Model) dispatch =
+    let stationsCount = 
+        match model.CurrentStationList with
+        | OkStationList stationList -> 
+            stationList.Length
+        | _ -> 0
+    let stationList =
+        match model.CurrentStationList with
+            | OkStationList stationList ->
+                ofList [ for station in stationList ->
+                             match model.CurrentStation with
+                             | Some currentStation' when currentStation'.Name = station.Name -> 
+                                 Station currentStation' dispatch
+                             | _ ->
+                                 StationListItem station dispatch ]
+              | EmptyStationList ->
+                  div [ ClassName "card-body" ] [
+                      p [ ClassName "card-text" ] [
+                          str "Загрузка данных ..." 
+                      ]
+                  ]
+              | ErrorStationList e ->
+                  div [ ClassName "card-body" ] [
+                      p [ ClassName "card-text text-warning" ] [
+                          span [ ClassName "badge badge-danger" ] [
+                              str "Error"
+                          ]
+                          str <| sprintf " %s" e  
+                      ]
+                  ]
     ofList [
-        ObjectCounter "Записей в базе данных" model.StationList.Length
-        div [ ClassName "card mt-1"]
-            [ for station in model.StationList ->
-                match model.CurrentStation with
-                | Some currentStation' when currentStation'.Name = station.Name -> 
-                    Station currentStation' dispatch
-                | _ ->
-                    StationListItem station dispatch
-            ]
+        ObjectCounter "Записей в базе данных" stationsCount
+        div [ ClassName "card mt-1"] [ stationList ]
     ]
