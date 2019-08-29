@@ -1,6 +1,6 @@
 # loads2019webapp
 
-A FSharp and Fable with Elmish util designed to ... calculate loads on city power electric stations. This software is used by the employee of electric grid company of Saint-Petersburg, Russia. This is expiremental software and used open source data. If you have any question please e-mail me.  
+A FSharp, Fable and Elmish util designed to ... calculate loads on city power electric stations. This software is used by the employee of electric grid company of Saint-Petersburg, Russia. This is expiremental software and used open source data. If you have any question please e-mail me.  
 
 ## Usage
 
