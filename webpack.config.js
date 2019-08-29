@@ -12,11 +12,11 @@ module.exports = {
   mode: 'development',
   entry: './Loads2019WebApp.fsproj',
   output: {
-    path: path.join(__dirname, './public'),
+    path: path.join(__dirname, './docs'),
     filename: 'bundle.js',
   },
   devServer: {
-    contentBase: './public',
+    contentBase: './docs',
     port: 8080,
   },
   devtool: isProduction ? 'source-map' : 'eval-source-map',
